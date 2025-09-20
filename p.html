@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>StudyAI — Ask a doubt, get a friend</title>
+<style>
+  :root{
+    --purple-600:#5d37ce; --purple-500:#8a63ff; --blue-500:#5a2dfb;
+    --muted:#6b6b7a; --card:#fff; --glass: rgba(255,255,255,0.7);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#fbfbff 0%, #f2f4ff 60%);color:#111;-webkit-font-smoothing:antialiased}
+  .navbar{display:flex;justify-content:space-between;align-items:center;padding:14px 28px;background:var(--glass);border-bottom:1px solid rgba(12,12,20,0.04)}
+  .brand{display:flex;gap:12px;align-items:center;color:var(--purple-600);font-weight:800}
+  .container{max-width:1100px;margin:28px auto;padding:0 18px}
+  .hero{text-align:left;margin-bottom:18px}
+  .hero h1{color:var(--purple-600);font-size:28px;margin:8px 0}
+  .hero p{color:var(--muted);margin:0}
+
+  .card{background:var(--card);border-radius:12px;box-shadow:0 10px 30px rgba(10,12,30,0.06);overflow:hidden;border:1px solid rgba(12,12,20,0.03)}
+  .assistant-header{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid rgba(12,12,20,0.03)}
+  .assistant-meta{display:flex;align-items:center;gap:12px}
+  .assistant-avatar{width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:linear-gradient(90deg,var(--purple-500),var(--blue-500));color:#fff;font-weight:800;font-size:18px}
+  .status{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .online{background:#e9fff0;padding:6px 10px;border-radius:999px;color:#057a3d;font-weight:700;display:flex;gap:8px;align-items:center;font-size:13px}
+  .typing{font-size:13px;color:var(--muted);}
+
+  .chat-body{height:420px;overflow:auto;padding:20px;background:linear-gradient(180deg, rgba(245,243,255,0.02), transparent)}
+  .msg-row{display:flex;gap:12px;margin-bottom:18px;align-items:flex-end}
+  .msg-row.assistant{justify-content:flex-start}
+  .msg-row.user{justify-content:flex-end}
+  .msg-avatar{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(90deg,var(--purple-500),var(--blue-500));color:#fff;font-weight:700;flex-shrink:0}
+  .bubble{max-width:74%;background:#fff;padding:12px 14px;border-radius:12px;border:1px solid rgba(12,12,20,0.04);box-shadow:0 6px 18px rgba(12,12,20,0.04);font-size:15px;line-height:1.45}
+  .bubble.user{background:linear-gradient(90deg,var(--purple-500),var(--blue-500));color:white;border:none}
+  .meta{display:flex;justify-content:space-between;gap:12px;margin-top:10px;font-size:12px;color:var(--muted)}
+
+  .composer{display:flex;gap:12px;align-items:center;padding:14px;border-top:1px solid rgba(12,12,20,0.03);background:linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.8))}
+  .input{flex:1;display:flex;gap:8px;align-items:center;background:#f8f8ff;padding:10px;border-radius:12px;border:1px solid rgba(12,12,20,0.03)}
+  .input textarea{flex:1;border:none;background:transparent;outline:none;resize:none;font-size:15px;padding:6px}
+  .send-btn{background:linear-gradient(90deg,var(--purple-500),var(--blue-500));color:white;padding:10px 14px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
+  .clear-btn{background:#fff;color:#111;border:1px solid rgba(12,12,20,0.06);padding:10px 14px;border-radius:10px;cursor:pointer}
+  .attach{background:transparent;border:none;font-size:18px;cursor:pointer}
+
+  .suggestions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .chip{padding:8px 12px;border-radius:999px;border:1px solid rgba(12,12,20,0.04);background:#fff;cursor:pointer;font-weight:600;font-size:13px}
+
+  .files-area{padding:12px 20px;border-top:1px dashed rgba(12,12,20,0.04);background:#fbfbff}
+  .files-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .file-item{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#fff;border-radius:8px;border:1px solid rgba(12,12,20,0.03)}
+  .note{color:var(--muted);font-size:13px;margin-top:10px;text-align:left}
+  .toast{position:fixed;right:20px;bottom:20px;padding:10px 14px;background:rgba(10,10,20,0.9);color:#fff;border-radius:10px;z-index:9999}
+
+  @media (max-width:900px){ .chat-body{height:320px} .hero h1{font-size:24px} }
+  .bubble{transition:transform .18s ease, box-shadow .18s ease}
+  .bubble:hover{transform:translateY(-4px)}
+</style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="brand"><img src="https://img.icons8.com/fluency/48/ai.png" alt="StudyAI" width="34" style="border-radius:6px"><strong>StudyAI</strong></div>
+    <div>
+      <select id="backendSelect" style="padding:8px;border-radius:8px;border:1px solid rgba(12,12,20,0.06)">
+        <option value="live">Live (call /api/ask)</option>
+        <option value="demo">Demo (local answers)</option>
+      </select>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="hero">
+      <h1>Need a quick explanation or help with homework?</h1>
+      <p class="note">Ask a clear question, or attach notes — I'll answer like a patient study buddy. (No judgment.)</p>
+    </div>
+
+    <div class="card">
+      <div class="assistant-header">
+        <div class="assistant-meta">
+          <div class="assistant-avatar" aria-hidden="true">AI</div>
+          <div>
+            <div style="font-weight:800">StudyAI — your study buddy</div>
+            <div style="font-size:13px;color:var(--muted)">Explain concepts, summarise notes, or check solutions.</div>
+          </div>
+        </div>
+        <div class="status">
+          <div class="online"><span style="width:8px;height:8px;background:#00c853;border-radius:50%;display:inline-block"></span>&nbsp;Active</div>
+          <div class="typing" id="typingIndicator" aria-live="polite" style="visibility:hidden">Typing…</div>
+        </div>
+      </div>
+
+      <div id="chatBody" class="chat-body" role="log" aria-live="polite">
+        <div class="msg-row assistant">
+          <div class="msg-avatar">AI</div>
+          <div class="bubble" role="article">
+            Hey — I'm StudyAI. Tell me your doubt in your own words and I'll try to help step-by-step. If you want, paste a short excerpt or attach your notes. <div class="meta"><span id="welcomeTime"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:12px 20px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-weight:700">Quick prompts</div>
+          <div style="font-size:13px;color:var(--muted)">Tap to try</div>
+        </div>
+        <div class="suggestions">
+          <button class="chip">Explain classical conditioning simply</button>
+          <button class="chip">Summarise this paragraph</button>
+          <button class="chip">Solve the equation step-by-step</button>
+          <button class="chip">Give 3 practice questions</button>
+        </div>
+      </div>
+
+      <div class="files-area" id="filesArea" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:700">Attached Files</div>
+          <button id="cancelAllBtn" class="clear-btn">Clear</button>
+        </div>
+        <div id="filesList" class="files-list"></div>
+      </div>
+
+      <div class="composer">
+        <div class="input">
+          <button id="attachBtn" class="attach" title="Attach files">📎</button>
+          <input id="fileInput" type="file" style="display:none" multiple accept=".pdf,.doc,.docx,.txt">
+          <textarea id="messageInput" rows="1" placeholder="Type your question — e.g. 'Explain classical conditioning in simple words'" aria-label="Type your question"></textarea>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+          <div style="display:flex;gap:8px">
+            <button id="sendBtn" class="send-btn">Send</button>
+            <button id="clearBtn" class="clear-btn">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">Backend: implement <code>POST /api/ask</code> accepting <code>{ question, files }</code> and returning <code>{ answer }</code>. Demo mode works locally.</div>
+  </main>
+
+<script>
+  /
+  const welcomeTime = document.getElementById('welcomeTime');
+  const messageInput = document.getElementById('messageInput');
+  const chatBody = document.getElementById('chatBody');
+  const sendBtn = document.getElementById('sendBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const backendSelect = document.getElementById('backendSelect');
+  const typingIndicator = document.getElementById('typingIndicator');
+
+  const attachBtn = document.getElementById('attachBtn');
+  const fileInput = document.getElementById('fileInput');
+  const filesArea = document.getElementById('filesArea');
+  const filesList = document.getElementById('filesList');
+  const cancelAllBtn = document.getElementById('cancelAllBtn');
+  const suggestionChips = document.querySelectorAll('.chip');
+
+  welcomeTime.textContent = new Date().toLocaleTimeString();
+  messageInput.addEventListener('input', () => {
+    messageInput.style.height = 'auto';
+    messageInput.style.height = messageInput.scrollHeight + 'px';
+  });
+  let selectedFiles = []; 
+  let attachedFilesText = []; 
+  attachBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files || []);
+    for (const f of files) {
+      const exists = selectedFiles.some(sf => sf.name === f.name && sf.size === f.size && sf.lastModified === f.lastModified);
+      if (!exists) selectedFiles.push(f);
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const text = String(ev.target.result || '').slice(0, 2000);
+        const idx = attachedFilesText.findIndex(x => x.name === f.name && x.size === f.size);
+        const payload = { name: f.name, text };
+        if (idx >= 0) attachedFilesText[idx] = payload;
+        else attachedFilesText.push(payload);
+        renderFilesList();
+      };
+      try { reader.readAsText(f); } catch(err){ /* ignore - server parsing is more reliable */ }
+    }
+    fileInput.value = '';
+    renderFilesList();
+  });
+
+  function renderFilesList() {
+    filesList.innerHTML = '';
+    if (selectedFiles.length === 0) {
+      filesArea.style.display = 'none';
+      cancelAllBtn.style.display = 'none';
+      return;
+    }
+    filesArea.style.display = 'block';
+    cancelAllBtn.style.display = 'inline-block';
+    selectedFiles.forEach((file, idx) => {
+      const item = document.createElement('div');
+      item.className = 'file-item';
+      item.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(90deg,#f3ecff,#eef5ff);display:flex;align-items:center;justify-content:center;color:var(--purple-600);font-weight:800">📄</div>
+          <div>
+            <div style="font-weight:600">${escapeHtml(file.name)}</div>
+            <div style="font-size:13px;color:var(--muted)">${Math.round(file.size/1024)} KB</div>
+          </div>
+        </div>
+        <div><button class="file-remove" data-idx="${idx}" title="Remove">✖</button></div>
+      `;
+      filesList.appendChild(item);
+    });
+  }
+  filesList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.file-remove');
+    if (!btn) return;
+    const idx = Number(btn.dataset.idx);
+    if (!Number.isFinite(idx)) return;
+    const removed = selectedFiles.splice(idx,1)[0];
+    attachedFilesText = attachedFilesText.filter(x => x.name !== removed.name);
+    renderFilesList();
+    toast('Removed: ' + removed.name);
+  });
+  cancelAllBtn.addEventListener('click', () => {
+    selectedFiles = [];
+    attachedFilesText = [];
+    renderFilesList();
+    toast('All attachments cleared');
+  });
+  suggestionChips.forEach(btn => btn.addEventListener('click', () => {
+    messageInput.value = btn.textContent;
+    messageInput.dispatchEvent(new Event('input'));
+    messageInput.focus();
+  }));
+  function appendMessage({from='assistant', text='', time}) {
+    const row = document.createElement('div');
+    row.className = 'msg-row ' + (from === 'user' ? 'user' : 'assistant');
+    if (from === 'assistant') {
+      row.innerHTML = `<div class="msg-avatar">AI</div><div class="bubble" role="article">${escapeHtml(text)}<div class="meta"><span>${time}</span></div></div>`;
+    } else {
+      row.innerHTML = `<div class="bubble user">${escapeHtml(text)}<div class="meta" style="justify-content:flex-end"><span>${time}</span></div></div><div class="msg-avatar" style="background:#2b2b3a">You</div>`;
+    }
+    chatBody.appendChild(row);
+    chatBody.scrollTop = chatBody.scrollHeight;
+  }
+  function generateDemoAnswer(q) {
+    const down = q.toLowerCase();
+    if (down.includes('classical') || down.includes('pavlov')) {
+      return "Classical conditioning is associative learning — a neutral stimulus paired with an unconditioned stimulus produces a conditioned response (Pavlov's dogs: bell + food → salivation).";
+    }
+    if (q.length < 40) return `Short answer: ${q}. Please add more context for a better reply.`;
+    return `I understood: "${q}". Try breaking it into steps; paste an excerpt for targeted help.`;
+  }
+  async function sendQuestion() {
+    const text = messageInput.value.trim();
+    if (!text) return;
+    const time = new Date().toLocaleTimeString();
+    appendMessage({from:'user', text, time});
+    messageInput.value = '';
+    messageInput.style.height = 'auto';
+
+    const mode = backendSelect.value; // 'live' or 'demo'
+    if (mode === 'demo') {
+      typingIndicator.style.visibility = 'visible';
+      setTimeout(()=> {
+        typingIndicator.style.visibility = 'hidden';
+        const reply = generateDemoAnswer(text);
+        appendMessage({from:'assistant', text: reply, time: new Date().toLocaleTimeString()});
+      }, 600);
+      return;
+    }
+    appendMessage({from:'assistant', text: 'Thinking… connecting to server', time: new Date().toLocaleTimeString()});
+    typingIndicator.style.visibility = 'visible';
+    try {
+      const resp = await fetch('/api/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: text, files: attachedFilesText })
+      });
+
+      typingIndicator.style.visibility = 'hidden';
+
+      if (!resp.ok) {
+        const txt = await resp.text().catch(()=> 'Server error');
+        throw new Error(`HTTP ${resp.status} - ${txt}`);
+      }
+
+      const data = await resp.json();
+      const answer = data.answer || data?.result || 'No answer returned';
+      appendMessage({from:'assistant', text: answer, time: new Date().toLocaleTimeString()});
+    } catch (err) {
+      typingIndicator.style.visibility = 'hidden';
+      appendMessage({from:'assistant', text: 'Error: ' + String(err) + '\nIf this persists, check your /api/ask implementation.', time: new Date().toLocaleTimeString()});
+    }
+  }
+  sendBtn.addEventListener('click', sendQuestion);
+  messageInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQuestion(); }
+  });
+  clearBtn.addEventListener('click', () => {
+    chatBody.innerHTML = '';
+    appendMessage({from:'assistant', text: "Hi — I'm your StudyAI assistant. Ask anything.", time: new Date().toLocaleTimeString()});
+    selectedFiles = [];
+    attachedFilesText = [];
+    renderFilesList();
+  });
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+      .replaceAll('"','&quot;').replaceAll("'","&#039;").replaceAll('\n','<br>');
+  }
+  function toast(msg) {
+    const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; document.body.appendChild(el);
+    setTimeout(()=> el.remove(), 2400);
+  }
+
+</script>
+</body>
+</html>
